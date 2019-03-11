@@ -1,0 +1,12 @@
+/*
+!/Drivers/
+
+!/Inc/
+/Inc/Backup
+
+!/Src/
+/Src/Backup
+
+!/.gitignore
+
+!/STM32F429ZI_FLASH.ld
