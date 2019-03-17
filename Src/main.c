@@ -20,16 +20,20 @@ int main(void)
   LCD_GpioInit();
   LCD_LtdcInit();
   LCD_DispInit_Spi();
-  LCD_DispInit_Ltdc();
+  //LCD_DispInit_Ltdc();
 
   while (1)
   {
-	  LCD_SetColorLtdc(0x2c);
-	  LCD_DrawRect_Ltdc(30, 30, 120, 120);
+	  //LCD_SetColorLtdc(0x2c);
+	  //LCD_DrawRect_Ltdc(30, 30, 120, 120);
+	  LCD_SetColor(0x5566);
+	  LCD_DrawRect_Spi(30, 30, 120, 120);
 	  HAL_Delay(500);
 
-	  LCD_SetColorLtdc(0x29);
-	  LCD_DrawRect_Ltdc(30, 30, 120, 120);
+	  //LCD_SetColorLtdc(0x29);
+	  //LCD_DrawRect_Ltdc(30, 30, 120, 120);
+	  LCD_SetColor(0x2f66);
+	  LCD_DrawRect_Spi(130, 130, 140, 140);
 	  HAL_Delay(500);
   }
 }
