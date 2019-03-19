@@ -10,3 +10,4 @@
 !/.gitignore
 
 !/STM32F429ZI_FLASH.ld
+!Gamedude.ioc
