@@ -226,6 +226,9 @@ u16 PPU_GetBgAddr()
 /*
  * PPU_HScroll()
  * Horizontal Scroll
+ * 
+ * PPU_VScroll()
+ * Vertical Scroll happens if rendering is enabled. It's called @ dot 256
  * */
 void PPU_HScroll()
 {
@@ -237,10 +240,6 @@ void PPU_HScroll()
 		PPUINTER.vAddr.cX++;
 }
 
-/*
- * PPU_VScroll()
- * Vertical Scroll happens if rendering is enabled. It's called @ dot 256
- * */
 void PPU_VScroll(){
 	if (!PPU_RENDERING)
 		return;
@@ -259,6 +258,35 @@ void PPU_VScroll(){
 		else
 			PPUINTER.vAddr.cY++;
 	}
+}
+
+/*
+ * PPU_HUpdate()
+ * Load the horizontal location from temporary address to current address.
+ * 
+ * PPU_Vupdate()
+ * Load the vertical location from temporary address to current address.
+ * */
+void PPU_HUpdate() 
+{
+	if (!PPU_RENDERING)
+		return;
+	PPUINTER.vAddr.r = (PPUINTER.vAddr.r & ~0x041F) | (PPUINTER.tAddr.r & 0x041F);	// Set the NT and the coarse X from tAddr
+}
+
+void PPU_VUpdate()
+{
+	if (!PPU_RENDERING)
+		return;
+	PPUINTER.vAddr.r = (PPUINTER.vAddr.r & ~0x7BE0) | (PPUINTER.tAddr.r & 0x7BE0);	// Set the NT and fine and coarse X from tAddr
+}
+
+void PPU_ReloadShift()
+{
+	bgShiftL = (bgShiftL & 0xFF00) | bgL;
+	bgShiftH = (bgShiftH & 0xFF00) | bgH;
+	atLatchH = (at & 1);
+	atLatchH = (at & 2);
 }
 
 /* Clear Secondary OAM */
@@ -385,6 +413,122 @@ void PPU_UpdatePixels()
 	atShiftH = (atShiftH << 1) | (atLatchH & 0x01);
 }
 
+void PPU_TickScanline(Scanline type)
+{
+	static u16 addr;
+
+	if (type == NMI && dot == 1)
+	{
+		PPUSTATUS.vBlank = 1;
+		if (PPUCTRL.nmi)
+		{
+			// [!] Call CPU NMI here
+			int cpu_nmi = 0;
+		}
+	}
+	else if (type == POST && dot == 0) 
+	{
+		// [!] Bascially we do nothing on our platform
+		int updateGui = 0;
+	}
+	else if (type == VISIBLE || type == PRE)
+	{
+		// Sprites
+		switch (dot)
+		{
+			case 1:
+				PPU_ClearOam();
+				if (type == PRE)
+					PPUSTATUS.sprOvf = PPUSTATUS.sprHit = 0;
+				break;
+			case 257:
+				PPU_EvalSprites();
+				break;
+			case 321:
+				PPU_LoadSprites();
+		}
+		// Background
+		switch (dot)
+		{
+			case 2 ... 255:
+			case 322 ... 337:
+				PPU_UpdatePixels();
+				switch (dot % 8)
+				{
+					// Nametable
+					case 1: 
+						addr = PPU_GetNtAddr();
+						PPU_ReloadShift();
+						break;
+					case 2:
+						nt = PPU_MemRead(addr);
+						break;
+					// Attribute table
+					case 3:
+						addr = PPU_GetAtAddr();
+						break;
+					case 4:
+						at = PPU_MemRead(addr);
+						if (PPUINTER.vAddr.cY & 2) at >>= 4;
+						if (PPUINTER.vAddr.cX & 2) at >>= 2;
+						break;
+					case 5:
+						addr = PPU_GetBgAddr();
+						break;
+					case 6:
+						bgL = PPU_MemRead(addr);
+						break;
+					case 7:
+						addr += 8;
+					case 0:
+						bgH = rd(addr);
+						PPU_HScroll();
+						break;
+				}
+				break;
+			case 256:
+				PPU_UpdatePixels();
+				bgH = PPU_MemRead(addr);
+				PPU_VScroll();
+				break;
+			case 257:
+				PPU_UpdatePixels();
+				PPU_ReloadShift();
+				PPU_HUpdate();
+				break;
+			case 280 ... 304:
+				if (type == PRE)
+					PPU_VUpdate();
+				break;
+			
+			// No shift reloading
+			case 1:
+				addr = PPU_GetNtAddr();
+				if (type == PRE)
+					PPUSTATUS.vBlank = 0;
+				break;
+			case 321:
+			case 339:
+				addr = PPU_GetNtAddr();
+				break;
+			case 338:
+				nt = PPU_MemRead(addr);
+				break;
+			case 340:
+				nt = PPU_MemRead(addr);
+				if (type == PRE && PPU_RENDERING && frameOdd)
+					dot++;
+		}
+		if (dot == 260 && PPU_RENDERING)
+		{
+			// [!] Signal scanline to cartrige
+			int cartrige_int = 0;
+		}
+	}
+	
+}
+
+/* Execute a PPU cycle */
 void PPU_Tick()
 {
 	switch(scanline)
