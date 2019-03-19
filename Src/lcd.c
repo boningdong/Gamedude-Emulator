@@ -15,7 +15,7 @@
 extern SPI_HandleTypeDef hspi1;
 extern LTDC_HandleTypeDef hltdc;
 
-uint8_t GRAM[LCD_WIDTH * LCD_HEIGHT] = {123,123,123,123,123,123};
+uint8_t GRAM[LCD_WIDTH * LCD_HEIGHT] = {0};
 
 void LCD_GpioInit() {
 	MX_SPI1_Init();
