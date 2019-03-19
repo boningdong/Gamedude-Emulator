@@ -10,7 +10,9 @@
 
 #include "typedef.h"
 
-#define	PPUADDR PPUSCROLL
+#define PPU_RENDERING 	(PPUMASK.bg || PPUMASK.spr)
+#define PPU_SPRITE_H	(PPUCTRL.sprSz ? 16 : 8)
+#define NTH_BIT(x, n)	(((x) >> (n)) & 1)
 
 typedef struct {
     u8 id;     // Index in OAM.
@@ -24,7 +26,7 @@ typedef struct {
 
 /* Configuration */
 typedef enum mirroring {VERTICAL, HORIZONTAL} Mirroring;
-
+typedef enum readwrite {WRITE, READ} Rw;
 
 /* Register Files */
 // PPUCTRL ($2000) register
@@ -74,7 +76,7 @@ union
 } PPUSTATUS;
 
 // PPUSCROLL ($2005) and PPUADDR ($2006)
-union
+typedef union ADDR
 {
     struct
     {
@@ -90,8 +92,14 @@ union
     };
     unsigned addr : 14;
     unsigned r : 15;
-} PPUSCROLL;
+} PPUADDR;
 
+struct {
+	PPUADDR vAddr;
+	PPUADDR tAddr;
+	unsigned fX : 3;
+	unsigned w : 1;
+} PPUINTER = {.w = 0};
 
 
 
