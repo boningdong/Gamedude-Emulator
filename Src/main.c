@@ -1,111 +1,37 @@
-/* USER CODE BEGIN Header */
-/**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2019 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
-/* USER CODE END Header */
-
-/* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "gfxsimulator.h"
 #include "ltdc.h"
 #include "spi.h"
 #include "gpio.h"
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
+#include "lcd.h"
+#include "graphic.h"
 
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
-/* USER CODE BEGIN PFP */
 
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-
-/* USER CODE END 0 */
-
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
-
-  /* MCU Configuration--------------------------------------------------------*/
-
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
-
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
-  /* Configure the system clock */
   SystemClock_Config();
-
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
-  /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_LTDC_Init();
-  MX_SPI1_Init();
-  MX_GFXSIMULATOR_Init();
-  /* USER CODE BEGIN 2 */
 
-  /* USER CODE END 2 */
+  // Initialize screen
+  LCD_GpioInit();
+  LCD_LtdcInit();
+  LCD_DispInit_Spi();
+  LCD_DispInit_Ltdc();
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
+	  LCD_SetColorLtdc(0x2c);
+	  LCD_DrawRect_Ltdc(30, 30, 120, 120);
+	  HAL_Delay(500);
 
-    /* USER CODE BEGIN 3 */
+	  LCD_SetColorLtdc(0x29);
+	  LCD_DrawRect_Ltdc(30, 30, 120, 120);
+	  HAL_Delay(500);
   }
-  /* USER CODE END 3 */
 }
 
 /**
