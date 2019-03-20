@@ -3,24 +3,52 @@
 #include "ltdc.h"
 #include "spi.h"
 #include "gpio.h"
+#include "fmc.h"
 
 #include "lcd.h"
 #include "graphic.h"
+#include "sdram.h"
 
 void SystemClock_Config(void);
+int printf(const char *fmt, ...);
+void SwoDebug_Enable(void);
 
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
 int main(void)
 {
 
   HAL_Init();
   SystemClock_Config();
   MX_GPIO_Init();
+  printf("Hello!\n");
 
   // Initialize screen
   LCD_GpioInit();
   LCD_LtdcInit();
   LCD_DispInit_Spi();
   LCD_DispInit_Ltdc();
+
+  MX_FMC_Init();
+
+  uint8_t* mem = (uint8_t*)SDRAM_BASE_ADDR;
+  for (int i = 0; i < 8; i++){
+	  mem[i] = i * 2;
+  }
+
+  for (int i = 0; i < 8; i++) {
+	  if(mem[i] != i * 2) {
+		  LCD_SetColorLtdc(0x13);
+		  LCD_DrawRect_Ltdc(30, 30, 120, 120);
+		  HAL_Delay(300);
+		  LCD_SetColorLtdc(0x16);
+		  LCD_DrawRect_Ltdc(30, 30, 120, 120);
+		  HAL_Delay(300);
+	  }
+  }
+
 
   while (1)
   {

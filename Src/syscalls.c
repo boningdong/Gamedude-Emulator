@@ -11,7 +11,7 @@
 **
 **  Environment : System Workbench for MCU
 **
-**  Distribution: The file is distributed “as is,” without any warranty
+**  Distribution: The file is distributed ï¿½as is,ï¿½ without any warranty
 **                of any kind.
 **
 *****************************************************************************
@@ -52,6 +52,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/times.h>
+#include "main.h"
 
 
 /* Variables */
@@ -106,7 +107,7 @@ __attribute__((weak)) int _write(int file, char *ptr, int len)
 
 	for (DataIdx = 0; DataIdx < len; DataIdx++)
 	{
-		__io_putchar(*ptr++);
+		ITM_SendChar(*ptr++);
 	}
 	return len;
 }
