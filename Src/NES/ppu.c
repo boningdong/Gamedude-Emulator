@@ -618,10 +618,10 @@ void PPU_Tick()
 {
 	switch(scanline)
 	{
-	case 0 ... 239: break;
-	case 	   240: break;
-	case       241: break;
-	case       261: break;
+	case 0 ... 239: PPU_TickScanline(VISIBLE); break;
+	case 	   240: PPU_TickScanline(POST); break;
+	case       241: PPU_TickScanline(NMI); break;
+	case       261: PPU_TickScanline(PRE); break;
 	}
 
 	if (++dot > 340)
