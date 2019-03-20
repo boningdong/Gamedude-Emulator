@@ -1,20 +1,28 @@
 #include "main.h"
-#include "gfxsimulator.h"
+#include "fatfs.h"
 #include "ltdc.h"
 #include "spi.h"
 #include "gpio.h"
-
 #include "lcd.h"
-#include "graphic.h"
+#include "NES/cpu.h"
+#include "NES/mapper.h"
 
 void SystemClock_Config(void);
+void startup(void);
+
+FATFS fs;
 
 int main(void)
 {
-
   HAL_Init();
   SystemClock_Config();
   MX_GPIO_Init();
+  MX_LTDC_Init();
+  MX_SPI1_Init();
+  MX_SPI2_Init();
+  MX_SPI4_Init();
+  MX_SPI5_Init();
+  MX_FATFS_Init();
 
   // Initialize screen
   LCD_GpioInit();
@@ -22,22 +30,32 @@ int main(void)
   LCD_DispInit_Spi();
   LCD_DispInit_Ltdc();
 
+  startup();
+  cpu_init();
+
   while (1)
   {
-	  LCD_SetColorLtdc(0x2c);
-	  LCD_DrawRect_Ltdc(30, 30, 120, 120);
-	  HAL_Delay(500);
-
-	  LCD_SetColorLtdc(0x29);
-	  LCD_DrawRect_Ltdc(30, 30, 120, 120);
-	  HAL_Delay(500);
+	  cpu_run();
   }
 }
 
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+void startup(void) {
+	DIR dir;
+	FILINFO fno;
+	FRESULT fr;
+	if (f_mount(&fs, "", 0) != FR_OK) return;
+	HAL_Delay(100);
+	if (f_opendir(&dir, "") != FR_OK) return;
+	fr = f_findfirst(&dir, &fno, "", "*.nes");
+	while (fr == FR_OK && fno.fname[0] != 0) {
+		// Draw fno.fname
+		fr = f_findnext(&dir, &fno);
+	}
+	f_closedir(&dir);
+	if (loadRomFromSD(&fs, "smb.nes") != 0) return;
+	HAL_GPIO_WritePin(CHRG_LED_GPIO_Port, CHRG_LED_Pin, GPIO_PIN_RESET);
+}
+
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
@@ -92,37 +110,7 @@ void SystemClock_Config(void)
   }
 }
 
-/* USER CODE BEGIN 4 */
-
-/* USER CODE END 4 */
-
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
 void Error_Handler(void)
 {
-  /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
-
-  /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t *file, uint32_t line)
-{ 
-  /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
-     tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-  /* USER CODE END 6 */
-}
-#endif /* USE_FULL_ASSERT */
-
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
