@@ -187,7 +187,7 @@ u8 PPU_MemRead(u16 addr)
 	switch (addr)
 	{
 		case 0x0000 ... 0x1FFF:
-			return mapper_rd(addr);
+			return chr_rd(addr);
 		case 0x2000 ... 0x3EFF:
 			return ciRam[NT_Mirror(addr)];
 		case 0x3F00 ... 0x3FFF:
@@ -204,7 +204,7 @@ void PPU_MemWrite(u16 addr, u8 v)
 	switch (addr)
 	{
 		case 0x0000 ... 0x1FFF:
-			mapper_wr(addr, v);
+			chr_wr(addr, v);
 			break;
 		case 0x2000 ... 0x3EFF:
 			ciRam[NT_Mirror(addr)] = v;
@@ -259,10 +259,13 @@ u8 PPU_RegAccess (u16 index, u8 v, Rw rw)
 			else
 			{
 				PPUINTER.tAddr.l = v;
-				PPUINTER.vAddr.r = PPUINTER.vAddr.r;
+				PPUINTER.vAddr.r = PPUINTER.tAddr.r;
 			}
 			PPUINTER.w = !PPUINTER.w;
 			break;
+		case 7:
+			PPU_MemWrite(PPUINTER.vAddr.addr, v);
+			PPUINTER.vAddr.addr += PPUCTRL.incr ? 32 : 1;
 		}
 	}
 	else
@@ -270,7 +273,7 @@ u8 PPU_RegAccess (u16 index, u8 v, Rw rw)
 		switch (index)
 		{
 		case 2:
-			res = (res & 0x1F) | (PPUSTATUS.r & ~0x1F);
+			res = (res & 0x1F) | PPUSTATUS.r;
 			PPUSTATUS.vBlank = 0;
 			PPUINTER.w = 0;
 			break;
@@ -428,7 +431,7 @@ void PPU_LoadSprites()
 	for (int i = 0; i < 8; i++)
 	{
 		oam[i] = secOam[i];		// Load sprite data
-		// Sprite hight setting
+		// Sprite height setting
 		if (PPU_SPRITE_H == 16)
 			addr = ((oam[i].tile & 1) * 0x1000) + ((oam[i].tile & ~1) * 16); // Bit 0 determined the bank index.
 		else
@@ -467,7 +470,7 @@ void PPU_UpdatePixels()
 		// Sprites
 		if (PPUMASK.spr && !(!PPUMASK.sprLeft && x < 8))
 		{
-			for(int i = 7; i >= 0; i++)	// [?] Why start from i = 7
+			for(int i = 7; i >= 0; i--)	// [?] Why start from i = 7
 			{
 				if (oam[i].id == 64)
 					continue;

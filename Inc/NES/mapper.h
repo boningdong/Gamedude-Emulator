@@ -16,6 +16,8 @@
 
 u8 mapper_rd(u16 addr);
 void mapper_wr(u16 addr, u8 data);
+u8 chr_rd(u16 addr);
+void chr_wr(u16 addr, u8 data);
 int loadRomFromSD(FATFS* fs, char* filename);
 void mapPrg(u8 bank);
 void mapChr(u8 bank);

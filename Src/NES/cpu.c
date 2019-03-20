@@ -64,10 +64,10 @@ void tick() {
 
 u8 rd(u16 addr) {
 	switch(addr) {
-		case 0x0000 ... 0x17FF:
+		case 0x0000 ... 0x1FFF:
 			return ram[addr % 0x800];
-		case 0x1800 ... 0x3FFF:
-			return PPU_MemRead(addr % 0x2000);
+		case 0x2000 ... 0x3FFF:
+			return PPU_RegAccess(addr % 8, 0, READ);
 		case 0x4000 ... 0x4015:
 			// APU, Peripherals..
 			return 0;
@@ -85,20 +85,23 @@ u8 rd(u16 addr) {
 
 void wr(u16 addr, u8 data) {
 	switch(addr) {
-		case 0x0000 ... 0x17FF:
+		case 0x0000 ... 0x1FFF:
 			ram[addr % 0x800] = data;
 			return;
-		case 0x1800 ... 0x3FFF:
-			return PPU_MemWrite(addr % 0x2000, data);
+		case 0x2000 ... 0x3FFF:
+			PPU_RegAccess(addr % 8, data, WRITE);
+			return;
 		case 0x4000 ... 0x4015:
 			// APU, Peripherals..
 			return;
 		case 0x4016:
-			return controller_wr(data);
+			controller_wr(data);
+			return;
 		case 0x4017:
 			return;
 		case 0x4018 ... 0xFFFF:
-			return mapper_wr(addr, data);
+			mapper_wr(addr, data);
+			return;
 		default:
 			printf("CPU Read out of range!\n");
 			return;
@@ -131,7 +134,7 @@ u8 getFlags() {
 }
 
 void updateC(u16 r) {
-	P[0] = (r > 0xFF);
+	P[0] = (r & 0x100);
 }
 
 void updateZ(u8 d) {
@@ -332,7 +335,7 @@ u16 absy_wr() {
 	tick();
 	return addrl | (addrh << 8);
 }
-// Absolute Indirect(JMP only:
+// Absolute Indirect (JMP only):
 // - Read imm (pointer low), increment PC
 // - Read imm (pointer high), increment PC
 // - Read low byte from pointer
@@ -434,7 +437,7 @@ u16 indy_wr() {
 // - If adding the offset overflowed the low byte of PC, add a cycle
 u16 rel() {
 	u8 imm = (u8)zp();
-	u16 addr = PC + imm;
+	u16 addr = PC + (s8)imm;
 	tick();
 	if ((addr & 0x100) != (PC & 0x100)) tick();
 	return addr;
@@ -571,8 +574,8 @@ void ADC_(mode m) {
 
 void SBC(mode m) {
 	u8 d = rd(m());
-	u16 s = A + (d ^ 0xFF) + P[0];
-	updateC(s);
+	u16 s = A - d - !P[0];
+	updateC(~s);
 	updateZ((u8)s);
 	updateV(A, (d ^ 0xFF), s);
 	updateN((u8)s);
@@ -615,8 +618,8 @@ void BIT(mode m) {
 // Compares
 void CMP(mode m) {
 	u8 d = rd(m());
-	u16 s = A + (d ^ 0xFF) + 1;
-	updateC(s);
+	u16 s = A - d;
+	updateC(~s);
 	updateZ((u8)s);
 	updateN((u8)s);
 	tick();
@@ -624,8 +627,8 @@ void CMP(mode m) {
 
 void CPX(mode m) {
 	u8 d = rd(m());
-	u16 s = X + (d ^ 0xFF) + 1;
-	updateC(s);
+	u16 s = X - d;
+	updateC(~s);
 	updateZ((u8)s);
 	updateN((u8)s);
 	tick();
@@ -633,8 +636,8 @@ void CPX(mode m) {
 
 void CPY(mode m) {
 	u8 d = rd(m());
-	u16 s = Y + (d ^ 0xFF) + 1;
-	updateC(s);
+	u16 s = Y - d;
+	updateC(~s);
 	updateZ((u8)s);
 	updateN((u8)s);
 	tick();

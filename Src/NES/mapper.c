@@ -24,8 +24,8 @@ void mapper_wr(u16 addr, u8 data) {
 }
 
 u8 chr_rd(u16 addr) {
-	int slot = addr / PRG_SLOT_SIZE;
-	int offset = addr % PRG_SLOT_SIZE;
+	int slot = addr  / CHR_SLOT_SIZE;
+	int offset = addr % CHR_SLOT_SIZE;
 	return chr[chrMap[slot] + offset];
 }
 
