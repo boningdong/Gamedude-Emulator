@@ -7,6 +7,8 @@
 !/Src/
 /Src/Backup
 
+!/Middlewares
+
 !/.gitignore
 
 !/STM32F429ZI_FLASH.ld
