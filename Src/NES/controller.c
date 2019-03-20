@@ -1,4 +1,5 @@
 #include "NES/controller.h"
+#include "main.h"
 
 extern SPI_HandleTypeDef hspi4;
 extern SPI_HandleTypeDef hspi5;

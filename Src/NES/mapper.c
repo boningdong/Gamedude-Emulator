@@ -1,4 +1,6 @@
 #include "NES/mapper.h"
+#include "NES/ppu.h"
+#include "NES/mappers/mapper0.h"
 
 static u8 *rom, *prg, *chr, *prgRam = NULL;
 static u32 prgMap[4], chrMap[8];
@@ -69,8 +71,7 @@ int loadRomFromSD(FATFS* fs, char* filename) {
 		hasChrRam = true;
 	}
 	// Flags 6
-	// PPU nametable mirroring style
-	/*** Set PPU mirroring here, (rom[6] & 0x01) ? vertical : horizontal ***/
+	PPU_SetMirror(rom[6] & 0x01 ? VERTICAL : HORIZONTAL);
 	// Presence of PRG RAM
 	hasPrgRam = ((rom[6] & 0x02) >> 1) ? true : false;
 	// 512 byte trainer before PRG data

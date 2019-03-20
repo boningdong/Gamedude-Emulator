@@ -5,10 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
-#include "mapper.h"
-#include "controller.h"
-#include "typedef.h"
 
+typedef uint16_t u16;
+typedef uint8_t u8;
 typedef u16 (*mode)();
 
 void cpu_init();

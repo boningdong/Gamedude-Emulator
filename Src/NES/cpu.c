@@ -1,4 +1,7 @@
 #include "NES/cpu.h"
+#include "NES/ppu.h"
+#include "NES/mapper.h"
+#include "NES/controller.h"
 
 /* Registers */
 
@@ -51,56 +54,54 @@ static u8 ram[0x800];
 /* CPU Tick */
 
 void tick() {
+	PPU_Tick();
+	PPU_Tick();
+	PPU_Tick();
 	cycles++;
 }
 
 /* Read/Write */
 
 u8 rd(u16 addr) {
-	if (addr < 0x1800) {
-		return ram[addr % 0x800];
-	}
-	else if (addr < 0x4000) {
-		// return ppu_rd(addr % 0x2000);
-		return 0;
-	}
-	else if (addr < 0x4016) {
-		// APU, Peripherals..
-		return 0;
-	}
-	else if (addr == 0x4016) {
-		return controller_rd(0);
-	}
-	else if (addr == 0x4017) {
-		return controller_rd(1);
-	}
-	else if(addr <= 0xFFFF) {
-		return mapper_rd(addr);
-	}
-	else {
-		printf("CPU Read out of range!\n");
-		return 0;
+	switch(addr) {
+		case 0x0000 ... 0x17FF:
+			return ram[addr % 0x800];
+		case 0x1800 ... 0x3FFF:
+			return PPU_MemRead(addr % 0x2000);
+		case 0x4000 ... 0x4015:
+			// APU, Peripherals..
+			return 0;
+		case 0x4016:
+			return controller_rd(0);
+		case 0x4017:
+			return controller_rd(1);
+		case 0x4018 ... 0xFFFF:
+			return mapper_rd(addr);
+		default:
+			printf("CPU Read out of range!\n");
+			return 0;
 	}
 }
 
 void wr(u16 addr, u8 data) {
-	if (addr < 0x1800) {
-		ram[addr % 0x800] = data;
-	}
-	else if (addr < 0x4000) {
-		// ppu_wr(addr % 0x2000);
-	}
-	else if (addr < 0x4016) {
-		// APU, Peripherals..
-	}
-	else if (addr == 0x4016) {
-		controller_wr(data);
-	}
-	else if (addr <= 0xFFFF) {
-		mapper_wr(addr, data);
-	}
-	else {
-		printf("CPU Write out of range!\n");
+	switch(addr) {
+		case 0x0000 ... 0x17FF:
+			ram[addr % 0x800] = data;
+			return;
+		case 0x1800 ... 0x3FFF:
+			return PPU_MemWrite(addr % 0x2000, data);
+		case 0x4000 ... 0x4015:
+			// APU, Peripherals..
+			return;
+		case 0x4016:
+			return controller_wr(data);
+		case 0x4017:
+			return;
+		case 0x4018 ... 0xFFFF:
+			return mapper_wr(addr, data);
+		default:
+			printf("CPU Read out of range!\n");
+			return;
 	}
 }
 

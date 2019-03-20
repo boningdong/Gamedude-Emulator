@@ -6,12 +6,98 @@
  */
 #include "main.h"
 #include "NES/ppu.h"
-#include "NES/Mapper.h"
+#include "NES/cpu.h"
+#include "NES/mapper.h"
 #include "stdio.h"
 #include "string.h"
 #include "lcd.h"
 
+#define PPU_RENDERING 	(PPUMASK.bg || PPUMASK.spr)
+#define PPU_SPRITE_H	(PPUCTRL.sprSz ? 16 : 8)
+#define NTH_BIT(x, n)	(((x) >> (n)) & 1)
 
+typedef struct {
+    u8 id;     // Index in OAM.
+    u8 x;      // X position.
+    u8 y;      // Y position.
+    u8 tile;   // Tile index.
+    u8 attr;   // Attributes.
+    u8 dataL;  // Tile data (low).
+    u8 dataH;  // Tile data (high).
+} Sprite;
+
+/* Register Files */
+// PPUCTRL ($2000) register
+union
+{
+    struct
+    {
+        unsigned nt     : 2;  // Nametable ($2000 / $2400 / $2800 / $2C00).
+        unsigned incr   : 1;  // Address increment (1 / 32).
+        unsigned sprTbl : 1;  // Sprite pattern table ($0000 / $1000).
+        unsigned bgTbl  : 1;  // BG pattern table ($0000 / $1000).
+        unsigned sprSz  : 1;  // Sprite size (8x8 / 8x16).
+        unsigned slave  : 1;  // PPU master/slave.
+        unsigned nmi    : 1;  // Enable NMI.
+    };
+    u8 r;
+} PPUCTRL;
+
+// PPUMASK ($2001) register
+union
+{
+    struct
+    {
+        unsigned gray    : 1;  // Grayscale.
+        unsigned bgLeft  : 1;  // Show background in leftmost 8 pixels.
+        unsigned sprLeft : 1;  // Show sprite in leftmost 8 pixels.
+        unsigned bg      : 1;  // Show background.
+        unsigned spr     : 1;  // Show sprites.
+        unsigned red     : 1;  // Intensify reds.
+        unsigned green   : 1;  // Intensify greens.
+        unsigned blue    : 1;  // Intensify blues.
+    };
+    u8 r;
+} PPUMASK;
+
+// PPUSTATUS ($2002) register
+union
+{
+    struct
+    {
+        unsigned bus    : 5;  // Not significant.
+        unsigned sprOvf : 1;  // Sprite overflow.
+        unsigned sprHit : 1;  // Sprite 0 Hit.
+        unsigned vBlank : 1;  // In VBlank?
+    };
+    u8 r;
+} PPUSTATUS;
+
+// PPUSCROLL ($2005) and PPUADDR ($2006)
+typedef union ADDR
+{
+    struct
+    {
+        unsigned cX : 5;  // Coarse X.
+        unsigned cY : 5;  // Coarse Y.
+        unsigned nt : 2;  // Nametable.
+        unsigned fY : 3;  // Fine Y.
+    };
+    struct
+    {
+        unsigned l : 8;
+        unsigned h : 7;
+    };
+    unsigned addr : 14;
+    unsigned r : 15;
+} PPUADDR;
+
+struct {
+	PPUADDR vAddr;
+	PPUADDR tAddr;
+	unsigned fX : 3;
+	unsigned w : 1;
+} PPUINTER = {.w = 0};
 
 
 /* Registers Declaration
@@ -101,7 +187,7 @@ u8 PPU_MemRead(u16 addr)
 	switch (addr)
 	{
 		case 0x0000 ... 0x1FFF:
-			return Mapper_ReadChr(addr);
+			return mapper_rd(addr);
 		case 0x2000 ... 0x3EFF:
 			return ciRam[NT_Mirror(addr)];
 		case 0x3F00 ... 0x3FFF:
@@ -118,7 +204,7 @@ void PPU_MemWrite(u16 addr, u8 v)
 	switch (addr)
 	{
 		case 0x0000 ... 0x1FFF:
-			Mapper_WriteChr(addr, v);
+			mapper_wr(addr, v);
 			break;
 		case 0x2000 ... 0x3EFF:
 			ciRam[NT_Mirror(addr)] = v;
@@ -226,7 +312,7 @@ u16 PPU_GetBgAddr()
 /*
  * PPU_HScroll()
  * Horizontal Scroll
- * 
+ *
  * PPU_VScroll()
  * Vertical Scroll happens if rendering is enabled. It's called @ dot 256
  * */
@@ -263,11 +349,11 @@ void PPU_VScroll(){
 /*
  * PPU_HUpdate()
  * Load the horizontal location from temporary address to current address.
- * 
+ *
  * PPU_Vupdate()
  * Load the vertical location from temporary address to current address.
  * */
-void PPU_HUpdate() 
+void PPU_HUpdate()
 {
 	if (!PPU_RENDERING)
 		return;
@@ -422,14 +508,13 @@ void PPU_TickScanline(Scanline type)
 		PPUSTATUS.vBlank = 1;
 		if (PPUCTRL.nmi)
 		{
-			// [!] Call CPU NMI here
-			int cpu_nmi = 0;
+			cpu_setNMI(1);
 		}
 	}
-	else if (type == POST && dot == 0) 
+	else if (type == POST && dot == 0)
 	{
 		// [!] Bascially we do nothing on our platform
-		int updateGui = 0;
+		//int updateGui = 0;
 	}
 	else if (type == VISIBLE || type == PRE)
 	{
@@ -456,7 +541,7 @@ void PPU_TickScanline(Scanline type)
 				switch (dot % 8)
 				{
 					// Nametable
-					case 1: 
+					case 1:
 						addr = PPU_GetNtAddr();
 						PPU_ReloadShift();
 						break;
@@ -481,7 +566,7 @@ void PPU_TickScanline(Scanline type)
 					case 7:
 						addr += 8;
 					case 0:
-						bgH = rd(addr);
+						bgH = PPU_MemRead(addr);
 						PPU_HScroll();
 						break;
 				}
@@ -500,7 +585,7 @@ void PPU_TickScanline(Scanline type)
 				if (type == PRE)
 					PPU_VUpdate();
 				break;
-			
+
 			// No shift reloading
 			case 1:
 				addr = PPU_GetNtAddr();
@@ -521,11 +606,11 @@ void PPU_TickScanline(Scanline type)
 		}
 		if (dot == 260 && PPU_RENDERING)
 		{
-			// [!] Signal scanline to cartrige
-			int cartrige_int = 0;
+			// [!] Signal scanline to cartridge
+			//int cartrige_int = 0;
 		}
 	}
-	
+
 }
 
 /* Execute a PPU cycle */

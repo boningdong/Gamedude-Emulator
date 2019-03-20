@@ -8,7 +8,6 @@
 #include <string.h>
 #include "fatfs.h"
 #include "typedef.h"
-#include "mappers/mapper0.h"
 
 #define PRG_DATA_OFFSET 0x8000
 #define PRG_RAM_OFFSET 0x6000
